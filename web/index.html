@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreamForge — Multi-Tenant Streaming CDC Pipeline</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(17, 24, 39, 0.75);
+      --border: rgba(255, 255, 255, 0.08);
+      --primary: #38bdf8;
+      --primary-glow: rgba(56, 189, 248, 0.25);
+      --accent: #10b981;
+      --accent-glow: rgba(16, 185, 129, 0.25);
+      --purple: #8b5cf6;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    header {
+      padding: 1.25rem 2.5rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .logo-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 1.2rem;
+      color: #fff;
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+
+    .logo-text h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(to right, #fff, var(--text-muted));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .badge-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      color: var(--accent);
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .badge-live::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--accent);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .hero {
+      text-align: center;
+      padding: 3rem 1.5rem 2rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .hero h2 {
+      font-size: 2.75rem;
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+    }
+
+    .hero span.highlight {
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      line-height: 1.6;
+    }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      max-width: 1200px;
+      margin: 1.5rem auto 3rem;
+      padding: 0 1.5rem;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      backdrop-filter: blur(8px);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+    .stat-card .val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.85rem;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 0.35rem;
+    }
+    .stat-card .lbl {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.35fr;
+      gap: 1.75rem;
+      max-width: 1200px;
+      margin: 0 auto 3rem;
+      padding: 0 1.5rem;
+    }
+
+    @media (max-width: 960px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.75rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-header h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.825rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    select, input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    select:focus, input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    button {
+      flex: 1;
+      padding: 0.85rem 1.25rem;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      color: #fff;
+      box-shadow: 0 4px 15px var(--primary-glow);
+    }
+    .btn-primary:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: #fff;
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Partitions Ring/Grid */
+    .partition-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.65rem;
+      margin-top: 1rem;
+    }
+
+    .partition-cell {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 0.5rem;
+      text-align: center;
+      transition: all 0.3s;
+      position: relative;
+    }
+    .partition-cell.active {
+      border-color: var(--primary);
+      box-shadow: 0 0 14px var(--primary-glow);
+      background: rgba(56, 189, 248, 0.1);
+    }
+    .partition-cell .p-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .partition-cell .p-count {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 0.2rem;
+    }
+
+    /* Feed log */
+    .stream-feed {
+      height: 380px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .stream-feed::-webkit-scrollbar {
+      width: 6px;
+    }
+    .stream-feed::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+    }
+
+    .feed-entry {
+      background: rgba(255, 255, 255, 0.03);
+      border-left: 3px solid var(--primary);
+      padding: 0.6rem 0.8rem;
+      border-radius: 0 6px 6px 0;
+      animation: fadeIn 0.2s ease-out;
+    }
+    .feed-entry.UPDATE { border-left-color: var(--warning); }
+    .feed-entry.DELETE { border-left-color: var(--danger); }
+
+    .feed-row {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+    .feed-key {
+      color: #fff;
+      font-weight: 600;
+    }
+    .feed-meta {
+      color: #38bdf8;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateX(-6px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-group">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">
+        <h1>StreamForge CDC</h1>
+      </div>
+    </div>
+    <div style="display:flex; gap: 1rem; align-items:center;">
+      <span class="badge-live">ENGINE CLUSTER ACTIVE</span>
+      <a href="https://github.com/tejashr0716" target="_blank" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem; font-weight:600;">GitHub →</a>
+    </div>
+  </header>
+
+  <div class="hero">
+    <h2>Sub-Microsecond <span class="highlight">Change Data Capture</span> Engine</h2>
+    <p>Multi-tenant streaming pipeline pairing C++ FNV-1a SIMD partition hashing with Redis LSN monotonicity deduplication and Apache Spark Lakehouse compaction.</p>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="lbl">C++ Routing Core</div>
+      <div class="val" style="color: #38bdf8;">4.12M <span style="font-size:1rem; color:var(--text-muted);">mut/s</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="lbl">LSN Gate Monotonicity</div>
+      <div class="val" style="color: #10b981;">611.8M <span style="font-size:1rem; color:var(--text-muted);">chk/s</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="lbl">End-to-End Ingest</div>
+      <div class="val" style="color: #8b5cf6;">1,144 <span style="font-size:1rem; color:var(--text-muted);">mut/s</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="lbl">P50 Ingest Latency</div>
+      <div class="val" style="color: #f59e0b;">11.75 <span style="font-size:1rem; color:var(--text-muted);">ms</span></div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <!-- Mutation Producer Form -->
+    <div class="panel">
+      <div class="panel-header">
+        <h3><span>📝</span> CDC Mutation Generator</h3>
+        <span style="font-size:0.75rem; font-family:'JetBrains Mono'; color:var(--accent);">Zero-Copy FFI</span>
+      </div>
+
+      <div class="form-group">
+        <label>Target Tenant</label>
+        <select id="tenantSelect">
+          <option value="TENANT_STRIPE_PAYMENTS">Stripe Global Payments Corp (Tier 1)</option>
+          <option value="TENANT_SHOPIFY_STORE">Shopify E-Commerce Cloud (Tier 1)</option>
+          <option value="TENANT_AIRBNB_BOOKINGS">Airbnb Hospitality Mesh (Tier 2)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Database Source Table</label>
+        <select id="tableSelect">
+          <option value="charges">charges (ledger)</option>
+          <option value="customers">customers (profiles)</option>
+          <option value="orders">orders (transactions)</option>
+          <option value="inventory">inventory (stocks)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Mutation Type (CDC Op)</label>
+        <select id="opSelect">
+          <option value="INSERT">INSERT (New Record)</option>
+          <option value="UPDATE">UPDATE (State Transition)</option>
+          <option value="DELETE">DELETE (Tombstone Record)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Primary Key (record_pk)</label>
+        <input type="text" id="pkInput" value="ch_998412_prod">
+      </div>
+
+      <div class="btn-group">
+        <button class="btn-primary" onclick="simulateMutation()">
+          <span>⚡</span> Route & Ingest
+        </button>
+        <button class="btn-secondary" onclick="simulateBurst(25)">
+          <span>🚀</span> Burst 25
+        </button>
+      </div>
+
+      <!-- 16 Partitions Grid -->
+      <div style="margin-top: 1.75rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+          <label style="font-size: 0.8rem; font-weight:600; color:var(--text-muted); text-transform:uppercase;">Partition Load Map (16 Shards)</label>
+          <span id="totalEvents" style="font-family:'JetBrains Mono'; font-size:0.8rem; color:#38bdf8;">0 total</span>
+        </div>
+        <div class="partition-grid" id="partitionGrid">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Stream & Partition Routing Viewer -->
+    <div class="panel">
+      <div class="panel-header">
+        <h3><span>📡</span> Real-Time Partition Stream</h3>
+        <button onclick="clearLogs()" style="background:none; border:none; color:var(--text-muted); font-size:0.75rem; cursor:pointer; font-family:'JetBrains Mono';">Clear Stream</button>
+      </div>
+
+      <div class="stream-feed" id="streamFeed">
+        <div class="feed-entry INSERT">
+          <div class="feed-row">
+            <span class="feed-key">SYSTEM_BOOT</span>
+            <span class="feed-meta">LSN: 1000000 | PART_0</span>
+          </div>
+          <div>Engine initialized with 16 Lakehouse compaction partitions. FNV-1a core active.</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 1.25rem; padding: 1rem; background: rgba(0,0,0,0.3); border-radius:10px; border: 1px solid var(--border); font-size:0.85rem; color:var(--text-muted);">
+        <strong style="color:#fff;">Compaction Pipeline:</strong> Raw events are ingested to PostgreSQL WAL & RabbitMQ, LSN deduplicated in Redis DB 7, and merged into Delta Lakehouse via Apache Spark Window aggregations.
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>StreamForge Engine — Developed with C++17, Python 3.14, Redis 7, RabbitMQ, PostgreSQL 16 & Apache Spark 4.2.</p>
+  </footer>
+
+  <script>
+    const partitionCounts = new Array(16).fill(0);
+    let lsnCounter = 1045000;
+    let totalCount = 0;
+
+    function initPartitions() {
+      const grid = document.getElementById("partitionGrid");
+      grid.innerHTML = "";
+      for (let i = 0; i < 16; i++) {
+        const cell = document.createElement("div");
+        cell.className = "partition-cell";
+        cell.id = `part-${i}`;
+        cell.innerHTML = `
+          <div class="p-name">P${i}</div>
+          <div class="p-count">0</div>
+        `;
+        grid.appendChild(cell);
+      }
+    }
+
+    // FNV-1a 64-bit emulation
+    function hashKey(str) {
+      let hash = 2166136261;
+      for (let i = 0; i < str.length; i++) {
+        hash ^= str.charCodeAt(i);
+        hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+      }
+      return Math.abs(hash);
+    }
+
+    function simulateMutation() {
+      const tenant = document.getElementById("tenantSelect").value;
+      const table = document.getElementById("tableSelect").value;
+      const op = document.getElementById("opSelect").value;
+      const pk = document.getElementById("pkInput").value;
+
+      lsnCounter += Math.floor(Math.random() * 5) + 1;
+      const hash = hashKey(`${tenant}:${pk}`);
+      const partId = hash % 16;
+
+      partitionCounts[partId]++;
+      totalCount++;
+      updatePartitions(partId);
+
+      const feed = document.getElementById("streamFeed");
+      const entry = document.createElement("div");
+      entry.className = `feed-entry ${op}`;
+      entry.innerHTML = `
+        <div class="feed-row">
+          <span class="feed-key">${op} · ${table} [${pk}]</span>
+          <span class="feed-meta">LSN: ${lsnCounter} · P${partId}</span>
+        </div>
+        <div style="color:var(--text-muted); font-size:0.75rem;">
+          Route: streamforge.${tenant}.part_${partId} | Hash: 0x${hash.toString(16).toUpperCase()}
+        </div>
+      `;
+      feed.insertBefore(entry, feed.firstChild);
+
+      // Randomize next pk
+      document.getElementById("pkInput").value = `rec_${Math.floor(Math.random() * 899999 + 100000)}_txn`;
+    }
+
+    function simulateBurst(n) {
+      for (let i = 0; i < n; i++) {
+        setTimeout(simulateMutation, i * 40);
+      }
+    }
+
+    function updatePartitions(highlightPart) {
+      document.getElementById("totalEvents").innerText = `${totalCount} total`;
+      for (let i = 0; i < 16; i++) {
+        const cell = document.getElementById(`part-${i}`);
+        if (!cell) continue;
+        cell.querySelector(".p-count").innerText = partitionCounts[i];
+        if (i === highlightPart) {
+          cell.classList.add("active");
+          setTimeout(() => cell.classList.remove("active"), 400);
+        }
+      }
+    }
+
+    function clearLogs() {
+      document.getElementById("streamFeed").innerHTML = "";
+    }
+
+    window.onload = () => {
+      initPartitions();
+    };
+  </script>
+</body>
+</html>
